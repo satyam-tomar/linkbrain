@@ -89,7 +89,7 @@ class ActionParser:
             ValueError: If parsing fails
         """
         try:
-            logger.debug(f"Parsing LLM output: {llm_output[:100]}...")
+            logger.debug(f"Parsing LLM output: {str(llm_output)[:100]}...")
             
             # Extract JSON
             json_str = self.extract_json(llm_output)

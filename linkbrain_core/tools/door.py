@@ -1,11 +1,16 @@
-# linkbrain_tools/door_tool.py
+
+"""Door tool wrapper."""
 
 from typing import Dict, Any
-from tools.base import BaseToolDevice
+from linkbrain_core.tools.base import BaseToolDevice
 from linkbrain.devices.door import Door
+
+__all__ = ['DoorTool']
 
 
 class DoorTool(BaseToolDevice):
+    """AI-executable door tool."""
+    
     def __init__(self, name: str, door: Door):
         super().__init__(name)
         self.door = door

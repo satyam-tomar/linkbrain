@@ -1,11 +1,15 @@
-# linkbrain_tools/light_tool.py
+"""Light tool wrapper."""
 
 from typing import Dict, Any
-from tools.base import BaseToolDevice
+from linkbrain_core.tools.base import BaseToolDevice
 from linkbrain.devices.light import Light
+
+__all__ = ['LightTool']
 
 
 class LightTool(BaseToolDevice):
+    """AI-executable light tool."""
+    
     def __init__(self, name: str, light: Light):
         super().__init__(name)
         self.light = light

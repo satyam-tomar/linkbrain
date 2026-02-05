@@ -1,8 +1,11 @@
-# linkbrain_tools/registry.py
+"""
+Tool registry for AI-executable actions.
+"""
 
 import logging
 from typing import Dict, Any, Optional, List
-from tools.base import BaseToolDevice
+
+from linkbrain_core.tools.base import BaseToolDevice
 from linkbrain_core.parsers.action_parser import DeviceAction
 
 logger = logging.getLogger(__name__)

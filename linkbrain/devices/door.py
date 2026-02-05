@@ -1,94 +1,52 @@
-"""
-Door controller device implementation.
-"""
 
-from typing import Dict, Any, Optional
+
+from typing import Dict, Any
+import logging
 from linkbrain.devices.base import BaseDevice
 from linkbrain.core.controller import ESP32Controller
-from linkbrain.utils.logger import get_logger
+from linkbrain.core.command import Command
+from linkbrain.core.exceptions import DeviceError
 
-logger = get_logger(__name__)
-
+logger = logging.getLogger(__name__)
+__all__ = ['Door']
 
 class Door(BaseDevice):
-    """
-    Door controller device controlled by ESP32.
+    """Door lock controller."""
     
-    Controls an automated door lock or actuator via GPIO pin.
-    Common use cases: smart locks, garage doors, automatic doors.
+    def __init__(self, name: str, controller: ESP32Controller, pin: int):
+        super().__init__(name, controller, pin)
+        self._state = {"lock_state": "locked", "pin": pin}
     
-    Example:
-        >>> door = Door(controller, pin=16, name="Front Door")
-        >>> door.unlock()
-        >>> door.status()
-        {'name': 'Front Door', 'pin': 16, 'state': 'unlocked'}
-        >>> door.lock()
-    """
+    def on(self) -> None:
+        """Unlock door."""
+        self.unlock()
     
-    def __init__(
-        self,
-        controller: ESP32Controller,
-        pin: int,
-        name: Optional[str] = None
-    ):
-        """
-        Initialize door controller.
-        
-        Args:
-            controller: ESP32Controller instance
-            pin: GPIO pin number
-            name: Optional door name
-        """
-        super().__init__(controller, pin, name)
-        self._is_locked = True
-        # Start in locked position for safety
+    def off(self) -> None:
+        """Lock door."""
         self.lock()
     
     def lock(self) -> None:
-        """
-        Lock the door.
-        
-        Raises:
-            DeviceError: If operation fails
-        """
-        logger.info(f"Locking {self.name}")
-        self._set_pin(0)  # 0 = locked
-        self._is_locked = True
+        """Lock the door."""
+        try:
+            logger.info(f"Locking door '{self.name}'")
+            response = self.controller.send_command(Command.gpio_set(self.pin, 0))
+            if not response.success:
+                raise DeviceError(f"Failed: {response.error}")
+            self._state["lock_state"] = "locked"
+        except Exception as e:
+            raise DeviceError(f"Failed to lock door: {e}")
     
     def unlock(self) -> None:
-        """
-        Unlock the door.
-        
-        Raises:
-            DeviceError: If operation fails
-        """
-        logger.info(f"Unlocking {self.name}")
-        self._set_pin(1)  # 1 = unlocked
-        self._is_locked = False
-    
-    def toggle(self) -> None:
-        """Toggle door state (locked ↔ unlocked)."""
-        if self._is_locked:
-            self.unlock()
-        else:
-            self.lock()
+        """Unlock the door."""
+        try:
+            logger.info(f"Unlocking door '{self.name}'")
+            response = self.controller.send_command(Command.gpio_set(self.pin, 1))
+            if not response.success:
+                raise DeviceError(f"Failed: {response.error}")
+            self._state["lock_state"] = "unlocked"
+        except Exception as e:
+            raise DeviceError(f"Failed to unlock door: {e}")
     
     def status(self) -> Dict[str, Any]:
-        """
-        Get door status.
-        
-        Returns:
-            Dictionary with door status information
-        """
-        try:
-            current_value = self._get_pin()
-            self._is_locked = not bool(current_value)
-        except Exception as e:
-            logger.warning(f"Could not read pin status: {e}")
-        
-        return {
-            "name": self.name,
-            "pin": self.pin,
-            "state": "locked" if self._is_locked else "unlocked",
-            "type": "door"
-        }
+        """Get door status."""
+        return self.get_state()

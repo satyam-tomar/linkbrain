@@ -1,11 +1,15 @@
-# linkbrain_tools/fan_tool.py
+"""Fan tool wrapper."""
 
 from typing import Dict, Any
-from tools.base import BaseToolDevice
+from linkbrain_core.tools.base import BaseToolDevice
 from linkbrain.devices.fan import Fan
+
+__all__ = ['FanTool']
 
 
 class FanTool(BaseToolDevice):
+    """AI-executable fan tool."""
+    
     def __init__(self, name: str, fan: Fan):
         super().__init__(name)
         self.fan = fan

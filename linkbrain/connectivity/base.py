@@ -1,10 +1,20 @@
 """
 Base connectivity interface for ESP32 communication.
+
+All connectivity implementations (Bluetooth, Wi-Fi, etc.) must
+inherit from BaseConnectivity and implement the required methods.
 """
 
 from abc import ABC, abstractmethod
 from typing import Optional
+import logging
+
 from linkbrain.core.command import Command, CommandResponse
+from linkbrain.core.exceptions import ConnectionError, CommandError, TimeoutError
+
+logger = logging.getLogger(__name__)
+
+__all__ = ['BaseConnectivity']
 
 
 class BaseConnectivity(ABC):
@@ -26,6 +36,9 @@ class BaseConnectivity(ABC):
         self.device_address = device_address
         self.timeout = timeout
         self._connected = False
+        logger.debug(
+            f"Initialized {self.__class__.__name__} for {device_address}"
+        )
     
     @abstractmethod
     def connect(self) -> None:
@@ -81,3 +94,8 @@ class BaseConnectivity(ABC):
         """Context manager exit."""
         self.disconnect()
         return False
+    
+    def __repr__(self) -> str:
+        """String representation."""
+        status = "connected" if self._connected else "disconnected"
+        return f"{self.__class__.__name__}({self.device_address}, {status})"

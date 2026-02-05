@@ -1,16 +1,27 @@
 """
 Main ESP32 controller - central entry point for device communication.
+
+The ESP32Controller provides a unified interface for communicating with
+ESP32 devices regardless of the underlying connectivity method (Bluetooth, WiFi).
 """
 
 from typing import Optional, Dict, Any
+import logging
+
 from linkbrain.connectivity.base import BaseConnectivity
 from linkbrain.connectivity.bluetooth import BluetoothConnectivity
 from linkbrain.connectivity.wifi import WiFiConnectivity
 from linkbrain.core.command import Command, CommandResponse
-from linkbrain.core.exceptions import UnsupportedModeError, ConnectionError
-from linkbrain.utils.logger import get_logger
+from linkbrain.core.exceptions import (
+    UnsupportedModeError,
+    ConnectionError,
+    CommandError,
+    TimeoutError
+)
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+__all__ = ['ESP32Controller']
 
 
 class ESP32Controller:
@@ -24,10 +35,17 @@ class ESP32Controller:
     never directly managing connectivity.
     
     Example:
-        >>> controller = ESP32Controller(mode="bluetooth", device_address="AA:BB:CC:DD:EE:FF")
+        >>> controller = ESP32Controller(
+        ...     mode="bluetooth",
+        ...     device_address="AA:BB:CC:DD:EE:FF"
+        ... )
         >>> controller.connect()
         >>> response = controller.send_command(Command.gpio_set(12, 1))
         >>> controller.disconnect()
+        
+        Or using context manager:
+        >>> with ESP32Controller(mode="wifi", device_address="192.168.1.100") as ctrl:
+        ...     response = ctrl.send_command(Command.status())
     """
     
     SUPPORTED_MODES = ["bluetooth", "wifi"]
@@ -47,7 +65,7 @@ class ESP32Controller:
             mode: Connectivity mode ("bluetooth" or "wifi")
             device_address: Device address (MAC for BT, IP for Wi-Fi)
             port: Port number (for Wi-Fi mode only)
-            timeout: Default timeout for operations
+            timeout: Default timeout for operations in seconds
             **kwargs: Additional connectivity-specific parameters
         
         Raises:
@@ -93,6 +111,9 @@ class ESP32Controller:
         
         Returns:
             Connectivity instance
+            
+        Raises:
+            UnsupportedModeError: If mode is unknown
         """
         if mode == "bluetooth":
             return BluetoothConnectivity(device_address, timeout)
@@ -132,7 +153,17 @@ class ESP32Controller:
             CommandError: If command fails
             TimeoutError: If command times out
         """
-        return self._connectivity.send_command(command)
+        if not self.is_connected():
+            raise ConnectionError("Not connected to ESP32. Call connect() first.")
+        
+        logger.debug(f"Sending command: {command}")
+        try:
+            response = self._connectivity.send_command(command)
+            logger.debug(f"Received response: {response}")
+            return response
+        except Exception as e:
+            logger.error(f"Command failed: {e}")
+            raise
     
     def is_connected(self) -> bool:
         """
@@ -152,6 +183,7 @@ class ESP32Controller:
         
         Raises:
             ConnectionError: If not connected
+            CommandError: If status query fails
         """
         response = self.send_command(Command.status())
         if response.success:
@@ -170,5 +202,9 @@ class ESP32Controller:
         return False
     
     def __repr__(self) -> str:
+        """String representation."""
         status = "connected" if self.is_connected() else "disconnected"
-        return f"ESP32Controller(mode={self.mode}, address={self.device_address}, status={status})"
+        return (
+            f"ESP32Controller(mode={self.mode}, "
+            f"address={self.device_address}, status={status})"
+        )

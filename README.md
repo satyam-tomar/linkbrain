@@ -1,434 +1,216 @@
 <div align="center">
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="assets/LinkBrain.png" width="400">
-    </td>
-    <td valign="middle" align="left">
-      <h2>LinkBrain</h2>
-      <div>ESP32 AI-powered smart home system SDK</div>
-      <br>
-      <div>
-        <p align="center">
-          <img src="https://img.shields.io/badge/Python-3.10%2B-blue" />
-          <img src="https://img.shields.io/badge/Version-0.1.0-green" />
-          <img src="https://img.shields.io/badge/License-MIT-orange" />
-        </p>
-      </div>
-    </td>
-  </tr>
-</table>
-
+  <img src="assets/LinkBrain.png" width="420" />
 </div>
 
+<div align="center">
+  <h3>A developer framework for AI-driven physical systems</h3>
+</div>
 
-LinkBrain is a clean, extensible Python library for controlling ESP32-based home automation devices. This SDK provides a hardware control layer designed to be used by higher-level applications (mobile apps, web apps, desktop apps).
+<div align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue" />
+  <img src="https://img.shields.io/badge/Version-0.1.0-green" />
+  <img src="https://img.shields.io/badge/License-MIT-orange" />
+</div>
+
+---
+# LinkBrain SDK
+
+A developer framework for safely controlling ESP32-based physical systems using AI-generated intent.
 
 ---
 
-## 🎯 Purpose
+## Overview
 
-LinkBrain is a **hardware control SDK**, not an application. It abstracts:
-- ESP32 connectivity (Bluetooth, Wi-Fi)
-- Command formatting and dispatch
-- Device control (GPIO-based home devices)
+**LinkBrain** is an AI-enabled control framework that allows developers to connect large language models with ESP32 hardware through a deterministic, contract-driven execution layer. It enables natural language interaction with physical devices while ensuring that all hardware actions are validated, explicit, and auditable.
 
-Applications should only need to call high-level APIs like `fan.on()` or `light.off()`.
+The SDK is designed for engineers building AI-driven physical agents, embedded automation systems, or experimental AI–hardware integrations where safety, predictability, and system boundaries are critical.
 
 ---
 
-## 🏗️ Architecture
+## Key capabilities
 
-### Core Design Principles
+LinkBrain provides a structured foundation for AI-to-hardware interaction. It supports multiple communication protocols, exposes high-level device abstractions, and cleanly separates AI reasoning from physical execution. The framework is written with production-quality engineering practices, including type safety, logging, and testability.
 
-1. **Single Controller Pattern**: `ESP32Controller` is the only object that manages connectivity
-2. **Device Abstraction**: Devices never directly manage Bluetooth or Wi-Fi
-3. **Swappable Connectivity**: Easy to switch between Bluetooth ↔ Wi-Fi
-4. **Clean OOP Boundaries**: Clear separation of concerns using composition
-
-### Package Structure
-
-```
-LinkBrain/
-├── core/
-│   ├── controller.py        # Main ESP32 controller (single entry point)
-│   ├── command.py           # Command abstraction / protocol
-│   └── exceptions.py        # Custom SDK exceptions
-├── connectivity/
-│   ├── base.py              # Base connectivity interface
-│   ├── bluetooth.py         # Bluetooth implementation
-│   └── wifi.py              # Wi-Fi implementation
-├── devices/
-│   ├── base.py              # Abstract device class
-│   ├── fan.py               # Fan device
-│   ├── light.py             # Light device
-│   ├── door.py              # Door controller
-│   ├── window.py            # Window controller
-│   └── energy_monitor.py    # Energy monitor
-└── utils/
-    └── logger.py            # Logging utilities
-```
-
-### Architecture Flow
-
-```
-Application Layer
-      ↓
-Device Objects (Fan, Light, Door, etc.)
-      ↓
-ESP32Controller (manages connectivity)
-      ↓
-Connectivity Layer (Bluetooth or Wi-Fi)
-      ↓
-ESP32 Hardware
-```
+Core capabilities include Bluetooth (BLE) and Wi-Fi connectivity, modular device definitions, integration with modern LLM providers, and a layered architecture that keeps AI logic isolated from hardware control.
 
 ---
 
-## 🚀 Quick Start
-
-### Installation
+## Installation
 
 ```bash
-# Clone or copy the LinkBrain package into your project
-# No pip package yet - v0.1.0 is file-based
+pip install linkbrain
 
-# Ensure you have Python 3.8+
-python --version
+# Install with AI integrations
+pip install linkbrain[ai]
+
+# Install development dependencies
+pip install linkbrain[dev]
+
 ```
 
-### Basic Usage
+##  Quick Start
+
+### Deterministic device control
 
 ```python
-from LinkBrain import ESP32Controller
-from LinkBrain.devices import Fan, Light, Door
+from linkbrain import ESP32Controller, Light
 
-# Initialize controller with Bluetooth
+# Initialize controller
 controller = ESP32Controller(
     mode="bluetooth",
     device_address="AA:BB:CC:DD:EE:FF"
 )
 
-# Connect to ESP32
+# Connect and control
 controller.connect()
-
-# Create devices
-fan = Fan(controller, pin=12, name="Living Room Fan")
-light = Light(controller, pin=14, name="Bedroom Light")
-door = Door(controller, pin=16, name="Front Door")
-
-# Control devices
-fan.on()
+light = Light("Living Room", controller, pin=12)
+light.on()
 light.off()
-door.unlock()
-
-# Check status
-print(fan.status())
-# Output: {'name': 'Living Room Fan', 'pin': 12, 'state': 'on', 'type': 'fan'}
-
-# Cleanup
 controller.disconnect()
 ```
 
-### Using Context Manager
+### LLM-driven control
 
 ```python
-from LinkBrain import ESP32Controller
-from LinkBrain.devices import Light
+import asyncio
+from linkbrain import ESP32Controller, Light
+from linkbrain_core.llm.anthropic import AnthropicProvider
+from linkbrain_core.prompts.template import PromptBuilder
+from linkbrain_core.parsers.action_parser import ActionParser
+from linkbrain_core.tools import ToolRegistry
+from linkbrain_core.tools.light import LightTool
 
-with ESP32Controller(mode="wifi", device_address="192.168.1.100") as controller:
-    light = Light(controller, pin=14)
-    light.on()
-    # Automatically disconnects when exiting context
-```
-
----
-
-## 📱 Supported Devices
-
-### Fan
-Controls fans via relay or transistor.
-
-```python
-fan = Fan(controller, pin=12)
-fan.on()
-fan.off()
-fan.toggle()
-status = fan.status()
-```
-
-### Light
-Controls lights (LEDs, bulbs, etc.).
-
-```python
-light = Light(controller, pin=14)
-light.on()
-light.off()
-light.toggle()
-```
-
-### Door
-Controls smart locks, garage doors, automatic doors.
-
-```python
-door = Door(controller, pin=16)
-door.lock()
-door.unlock()
-door.toggle()
-```
-
-### Window
-Controls automated window blinds, shutters, or actuators.
-
-```python
-window = Window(controller, pin=18)
-window.open()
-window.close()
-window.toggle()
-```
-
-### Energy Monitor
-Monitors electrical consumption via current/voltage sensors.
-
-```python
-monitor = EnergyMonitor(controller, pin=34, voltage=220.0)
-readings = monitor.get_readings()
-print(f"Power: {readings['power_watts']}W")
-```
-
----
-
-## 🔌 Connectivity Modes
-
-### Bluetooth
-
-```python
-controller = ESP32Controller(
-    mode="bluetooth",
-    device_address="AA:BB:CC:DD:EE:FF",
-    timeout=5.0
-)
-```
-
-### Wi-Fi
-
-```python
-controller = ESP32Controller(
-    mode="wifi",
-    device_address="192.168.1.100",
-    port=8080,
-    timeout=5.0
-)
-```
-
----
-
-## ⚙️ Configuration
-
-### Valid GPIO Pins
-- **Digital I/O**: 0-39 (most pins)
-- **ADC-capable** (for EnergyMonitor): 32, 33, 34, 35, 36, 39
-
-### Logging
-
-```python
-import logging
-from LinkBrain.utils.logger import get_logger
-
-# Enable debug logging
-logger = get_logger(__name__, level=logging.DEBUG)
-```
-
----
-
-## 🛠️ Extending the SDK
-
-### Adding a New Device
-
-1. Create a new file in `LinkBrain/devices/`
-2. Inherit from `BaseDevice`
-3. Implement required methods
-
-```python
-from LinkBrain.devices.base import BaseDevice
-
-class Thermostat(BaseDevice):
-    def set_temperature(self, temp: float):
-        # Implementation
-        pass
-    
-    def status(self):
-        return {
-            "name": self.name,
-            "pin": self.pin,
-            "type": "thermostat"
-        }
-```
-
-### Adding a New Connectivity Mode
-
-1. Create a new file in `LinkBrain/connectivity/`
-2. Inherit from `BaseConnectivity`
-3. Implement required methods
-4. Register in `ESP32Controller._create_connectivity()`
-
----
-
-## 🚫 What LinkBrain Does NOT Include
-
-This is a **hardware control SDK**, not a full application. By design, it does NOT include:
-
-- ❌ User interfaces (UI)
-- ❌ Cloud connectivity
-- ❌ Databases
-- ❌ Authentication/authorization
-- ❌ MQTT or message brokers
-- ❌ OTA updates
-- ❌ Async/await (kept simple for v0.1)
-
-These features should be implemented in higher-level applications that use LinkBrain.
-
----
-
-## 🔒 Error Handling
-
-LinkBrain provides clear exception hierarchy:
-
-```python
-from LinkBrain.core.exceptions import (
-    LinkBrainError,           # Base exception
-    ConnectionError,       # Connection issues
-    CommandError,          # Command execution failures
-    DeviceError,           # Device operation failures
-    TimeoutError,          # Operation timeouts
-    InvalidPinError,       # Invalid GPIO pin
-    UnsupportedModeError   # Unsupported connectivity mode
-)
-
-try:
+async def main():
+    # Setup
+    controller = ESP32Controller(mode="bluetooth")
     controller.connect()
-except ConnectionError as e:
-    print(f"Failed to connect: {e}")
-```
-
----
-
-## 📝 Protocol Format
-
-LinkBrain uses a simple text-based protocol:
-
-### Command Format
-```
-TYPE:PARAM1=VALUE1,PARAM2=VALUE2
-```
-
-Examples:
-- `gpio_set:pin=12,value=1`
-- `gpio_get:pin=14`
-- `status`
-
-### Response Format
-```
-OK:key1=value1,key2=value2
-ERROR:error_message
-```
-
----
-
-## 🧪 Current Implementation Status
-
-**v0.1.0** is a foundational release:
-
-- ✅ Core architecture in place
-- ✅ All device types implemented
-- ✅ Both connectivity modes (Bluetooth, Wi-Fi) structured
-- ⚠️ Connectivity uses **placeholder/mock implementations**
-  - Real Bluetooth/Wi-Fi communication requires actual ESP32 hardware and firmware
-  - Current implementation simulates responses for testing
-
-### Next Steps for Production
-
-1. Implement actual Bluetooth communication (PyBluez, bleak, etc.)
-2. Implement actual Wi-Fi/TCP communication
-3. Deploy corresponding firmware on ESP32
-4. Add comprehensive error recovery
-5. Performance optimization
-
----
-
-## 🤝 Contributing
-
-This is v0.1.0 - a starting point. Key areas for improvement:
-
-1. Real hardware integration
-2. More device types (sensors, motors, etc.)
-3. Additional connectivity modes (Serial, LoRa, etc.)
-4. Advanced features (device discovery, pairing, etc.)
-5. Comprehensive test suite
-
----
-
-## 📄 License
-
-To be determined based on project requirements.
-
----
-
-## 💡 Example Application Integration
-
-```python
-# Example: Simple CLI application using LinkBrain
-
-from LinkBrain import ESP32Controller
-from LinkBrain.devices import Fan, Light
-
-def main():
-    # Initialize
-    controller = ESP32Controller(
-        mode="wifi",
-        device_address="192.168.1.100"
-    )
     
-    try:
-        controller.connect()
-        
-        # Setup devices
-        living_room_fan = Fan(controller, pin=12, name="Living Room Fan")
-        bedroom_light = Light(controller, pin=14, name="Bedroom Light")
-        
-        # Application logic
-        while True:
-            command = input("Enter command (fan on/off, light on/off, quit): ")
-            
-            if command == "fan on":
-                living_room_fan.on()
-            elif command == "fan off":
-                living_room_fan.off()
-            elif command == "light on":
-                bedroom_light.on()
-            elif command == "light off":
-                bedroom_light.off()
-            elif command == "quit":
-                break
+    light = Light("living_room", controller, pin=12)
+    registry = ToolRegistry()
+    registry.register_device("living_room", LightTool("living_room", light))
     
-    finally:
-        controller.disconnect()
+    # Initialize AI
+    llm = AnthropicProvider(api_key="your-key")
+    prompt_builder = PromptBuilder()
+    
+    # Natural language control
+    user_input = "Turn on the living room light"
+    prompt = prompt_builder.build_prompt(user_input)
+    response = await llm.generate_structured(prompt)
+    
+    # Execute
+    parser = ActionParser()
+    parsed = parser.parse(response)
+    await registry.execute_actions(parsed.actions)
+    
+    controller.disconnect()
 
-if __name__ == "__main__":
-    main()
+asyncio.run(main())
 ```
 
----
+##  Architecture
+LinkBrain is split into two primary layers: a hardware control layer and an AI integration layer. This separation ensures that AI systems never interact with hardware directly.
 
-**LinkBrain** - Clean, Simple, Extensible ESP32 Control
+```
+linkbrain/                  # Hardware layer
+├── core/                   # ESP32 communication
+├── connectivity/           # Bluetooth, WiFi
+├── devices/                # Physical devices
+└── utils/                  # Utilities
 
+linkbrain_core/             # AI layer
+├── llm/                    # LLM providers
+├── parsers/                # Response parsing
+├── prompts/                # Prompt templates
+└── tools/                  # AI-executable tools
+```
 
+##  Documentation
 
+- [Getting Started Guide](docs/getting_started.md)
+- [API Reference](docs/api_reference.md)
+- [Architecture Overview](docs/architecture.md)
+- [Device Development](docs/devices/)
 
+## Supported Devices
+The SDK ships with a small set of reference device abstractions and is designed to be extended.
 
+- **Light**: On/off control
+- **Fan**: On/off control
+- **Door**: Lock/unlock control
+- **Custom**: Easy to extend
 
-I built a framework to let LLMs control ESP32s with proper parsing and safety. What features should I add next?
-The "Show HN" (Hacker News): This is a tough crowd but highly influential. If they like your "Decoupled Architecture," it could go viral.
-I've released the core architecture for LinkBrain. It's open-source because I want to see what devices you want to add. I've started with Lights; who wants to help me write the ClimateControl or Security modules?"
-When an interviewer asks, "Tell me about a time you handled a difficult technical challenge," you won't talk about a LeetCode problem—you'll talk about solving race conditions in ESP32 hardware via an LLM parser
+##  Supported LLMs
+LinkBrain currently integrates with the following providers through structured output interfaces:
+- Anthropic Claude (Haiku, Sonnet, Opus)
+- Google Gemini (Pro, Pro Vision)
+
+##  Testing
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=linkbrain --cov=linkbrain_core
+
+# Specific module
+pytest tests/unit/test_devices/
+```
+
+##  Development
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/linkbrain.git
+cd linkbrain
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run linters
+black .
+flake8 .
+mypy .
+
+# Run tests
+pytest
+```
+
+##  Project Structure
+
+```
+linkbrain_project/
+├── linkbrain/              # Main SDK package
+│   ├── core/               # Core communication
+│   ├── connectivity/       # Protocol implementations
+│   ├── devices/            # Device abstractions
+│   └── utils/              # Utilities
+├── linkbrain_core/         # AI integration layer
+│   ├── llm/                # LLM providers
+│   ├── parsers/            # Response parsing
+│   ├── prompts/            # Prompt templates
+│   └── tools/              # AI tools
+├── examples/               # Usage examples
+├── tests/                  # Test suite
+├── docs/                   # Documentation
+├── setup.py                # Package setup
+├── requirements.txt        # Dependencies
+└── README.md               # This file
+```
+
+##  Contributing
+Contributions are welcome. Please review the contribution guidelines in [Contributing Guide](CONTRIBUTING.md) before submitting pull requests.
+
+##  License
+
+MIT License. See the [LICENSE](LICENSE) file for details.
+
+##  Roadmap
+
+- [ ] More device types (sensors, servos, etc.)
+- [ ] WebSocket support for real-time updates
+- [ ] Device discovery and auto-configuration
+- [ ] Web dashboard for device management
+- [ ] MQTT integration
+- [ ] Home Assistant integration

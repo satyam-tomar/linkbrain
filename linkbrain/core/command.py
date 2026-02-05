@@ -1,9 +1,15 @@
 """
 Command abstraction for ESP32 communication protocol.
+
+This module defines the command protocol used to communicate
+with ESP32 devices, including command types, serialization,
+and response parsing.
 """
 
 from typing import Dict, Any, Optional
 from enum import Enum
+
+__all__ = ['CommandType', 'Command', 'CommandResponse']
 
 
 class CommandType(Enum):

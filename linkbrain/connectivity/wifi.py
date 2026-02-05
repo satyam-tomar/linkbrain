@@ -1,16 +1,21 @@
 """
 Wi-Fi connectivity implementation for ESP32.
+
+Communicates with ESP32 over Wi-Fi using TCP sockets.
 """
 
 import socket
 import time
 from typing import Optional
-from linkbrain.connectivity.base import BaseConnectivity
-from linkbrain.core.command import Command, CommandResponse
-from linkbrain.core.exceptions import ConnectionError, CommandError, TimeoutError
-from linkbrain.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+from linkbrain.connectivity.base import BaseConnectivity
+from linkbrain.core.command import Command, CommandResponse, CommandType
+from linkbrain.core.exceptions import ConnectionError, CommandError, TimeoutError
+
+logger = logging.getLogger(__name__)
+
+__all__ = ['WiFiConnectivity']
 
 
 class WiFiConnectivity(BaseConnectivity):
@@ -18,6 +23,12 @@ class WiFiConnectivity(BaseConnectivity):
     Wi-Fi (TCP/IP) connectivity implementation for ESP32.
     
     Communicates with ESP32 over Wi-Fi using TCP sockets.
+    
+    Example:
+        >>> wifi = WiFiConnectivity(device_address="192.168.1.100", port=8080)
+        >>> wifi.connect()
+        >>> response = wifi.send_command(Command.status())
+        >>> wifi.disconnect()
     """
     
     def __init__(
@@ -37,7 +48,9 @@ class WiFiConnectivity(BaseConnectivity):
         super().__init__(device_address, timeout)
         self.port = port
         self._socket: Optional[socket.socket] = None
-        logger.info(f"Wi-Fi connectivity initialized for {device_address}:{port}")
+        logger.info(
+            f"Wi-Fi connectivity initialized for {device_address}:{port}"
+        )
     
     def connect(self) -> None:
         """
@@ -47,18 +60,18 @@ class WiFiConnectivity(BaseConnectivity):
             ConnectionError: If connection fails
         """
         try:
-            logger.info(f"Connecting to ESP32 via Wi-Fi at {self.device_address}:{self.port}")
+            logger.info(
+                f"Connecting to ESP32 via Wi-Fi at "
+                f"{self.device_address}:{self.port}"
+            )
             
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._socket.settimeout(self.timeout)
             
-            # Placeholder: In production, actually connect
-            # self._socket.connect((self.device_address, self.port))
+            # Connect to ESP32
+            self._socket.connect((self.device_address, self.port))
             
-            # Simulate connection
-            time.sleep(0.5)
             self._connected = True
-            
             logger.info("Wi-Fi connection established")
             
         except socket.timeout:
@@ -106,13 +119,11 @@ class WiFiConnectivity(BaseConnectivity):
             cmd_string = command.to_protocol_string()
             logger.debug(f"Sending command: {cmd_string}")
             
-            # Placeholder: In production, send via socket
-            # self._socket.sendall(cmd_string.encode('utf-8') + b'\n')
-            # response_data = self._socket.recv(4096).decode('utf-8').strip()
+            # Send via socket
+            self._socket.sendall(cmd_string.encode('utf-8') + b'\n')
             
-            # Simulate command execution
-            time.sleep(0.1)
-            response_data = self._simulate_response(command)
+            # Receive response
+            response_data = self._receive_response()
             
             response = CommandResponse.from_string(response_data)
             logger.debug(f"Received response: {response}")
@@ -130,21 +141,25 @@ class WiFiConnectivity(BaseConnectivity):
         """Check if connected."""
         return self._connected and self._socket is not None
     
-    def _simulate_response(self, command: Command) -> str:
+    def _receive_response(self, buffer_size: int = 4096) -> str:
         """
-        Simulate ESP32 response for testing.
+        Receive response from ESP32.
         
-        In production, this method would not exist - responses
-        come from actual ESP32 hardware.
+        Args:
+            buffer_size: Size of receive buffer
+        
+        Returns:
+            Response string
+        
+        Raises:
+            CommandError: If receive fails
         """
-        from linkbrain.core.command import CommandType
-        
-        if command.cmd_type == CommandType.GPIO_SET:
-            return f"OK:pin={command.params['pin']},value={command.params['value']}"
-        elif command.cmd_type == CommandType.GPIO_GET:
-            # Simulate reading pin value
-            return f"OK:pin={command.params['pin']},value=0"
-        elif command.cmd_type == CommandType.STATUS:
-            return "OK:status=ready,uptime=1234,ip=192.168.1.100"
-        else:
-            return "OK"
+        try:
+            data = self._socket.recv(buffer_size)
+            if not data:
+                raise CommandError("Connection closed by ESP32")
+            return data.decode('utf-8').strip()
+        except socket.timeout:
+            raise TimeoutError("Response timeout")
+        except Exception as e:
+            raise CommandError(f"Failed to receive response: {e}")
