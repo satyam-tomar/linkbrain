@@ -1,5 +1,5 @@
 """
-Example usage of the ESP32X SDK.
+Example usage of the LinkBrain SDK.
 
 This demonstrates how applications should use the library.
 """
@@ -203,7 +203,7 @@ def example_error_handling():
     except ConnectionError as e:
         print(f"✗ Connection error: {e}")
     except LinkBrainError as e:
-        print(f"✗ General ESP32X error: {e}")
+        print(f"✗ General LinkBrain error: {e}")
     finally:
         controller.disconnect()
 
@@ -214,7 +214,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
     
     print("=" * 60)
-    print("ESP32X SDK - Usage Examples")
+    print("LinkBrain SDK - Usage Examples")
     print("=" * 60)
     
     example_basic_usage()

@@ -3,7 +3,11 @@ Bluetooth connectivity implementation for ESP32.
 """
 
 import time
+import asyncio
 from typing import Optional
+
+from bleak import BleakScanner, BleakClient
+
 from linkbrain.connectivity.base import BaseConnectivity
 from linkbrain.core.command import Command, CommandResponse
 from linkbrain.core.exceptions import ConnectionError, CommandError, TimeoutError
@@ -11,127 +15,113 @@ from linkbrain.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+WRITE_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+READ_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+
 
 class BluetoothConnectivity(BaseConnectivity):
     """
     Bluetooth connectivity implementation for ESP32.
-    
-    This is a placeholder implementation. In production, this would use
-    libraries like PyBluez, bleak, or similar for actual BT communication.
     """
-    
-    def __init__(self, device_address: str, timeout: float = 5.0):
-        """
-        Initialize Bluetooth connectivity.
-        
-        Args:
-            device_address: Bluetooth MAC address (e.g., "AA:BB:CC:DD:EE:FF")
-            timeout: Connection timeout in seconds
-        """
+
+    def __init__(self, device_address: Optional[str] = None, timeout: float = 5.0):
         super().__init__(device_address, timeout)
-        self._socket = None
-        logger.info(f"Bluetooth connectivity initialized for {device_address}")
-    
+
+        self._client: Optional[BleakClient] = None
+        self._device = None
+        self._loop = asyncio.new_event_loop()
+
+        logger.info("Bluetooth connectivity initialized")
+
     def connect(self) -> None:
         """
         Establish Bluetooth connection to ESP32.
-        
-        Raises:
-            ConnectionError: If connection fails
         """
         try:
-            logger.info(f"Connecting to ESP32 via Bluetooth at {self.device_address}")
-            
-            # Placeholder: In production, use actual Bluetooth libraries
-            # Example with PyBluez:
-            # import bluetooth
-            # self._socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-            # self._socket.connect((self.device_address, 1))
-            
-            # Simulate connection
-            time.sleep(0.5)
+            logger.info("Connecting to ESP32 via Bluetooth (BLE)")
+            self._run(self._connect_async())
             self._connected = True
-            
             logger.info("Bluetooth connection established")
-            
         except Exception as e:
             self._connected = False
-            raise ConnectionError(f"Failed to connect via Bluetooth: {str(e)}")
-    
+            raise ConnectionError(f"Failed to connect via Bluetooth: {e}")
+
     def disconnect(self) -> None:
         """Disconnect from ESP32."""
-        if self._socket:
-            try:
-                # Placeholder: self._socket.close()
-                logger.info("Bluetooth disconnected")
-            except Exception as e:
-                logger.error(f"Error during disconnect: {e}")
-            finally:
-                self._socket = None
-                self._connected = False
-        else:
+        if not self._connected:
+            return
+
+        try:
+            self._run(self._disconnect_async())
+            logger.info("Bluetooth disconnected")
+        except Exception as e:
+            logger.error(f"Error during disconnect: {e}")
+        finally:
             self._connected = False
-    
+            self._client = None
+
     def send_command(self, command: Command) -> CommandResponse:
         """
         Send command via Bluetooth.
-        
-        Args:
-            command: Command to send
-        
-        Returns:
-            Response from ESP32
-        
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-            TimeoutError: If command times out
         """
-        if not self._connected:
+        if not self._connected or not self._client:
             raise ConnectionError("Not connected to ESP32")
-        
+
         try:
-            # Convert command to protocol string
-            cmd_string = command.to_protocol_string()
-            logger.debug(f"Sending command: {cmd_string}")
-            
-            # Placeholder: In production, send via Bluetooth
-            # self._socket.send(cmd_string.encode('utf-8'))
-            # response_data = self._socket.recv(1024).decode('utf-8')
-            
-            # Simulate command execution
-            time.sleep(0.1)
-            response_data = self._simulate_response(command)
-            
-            response = CommandResponse.from_string(response_data)
-            logger.debug(f"Received response: {response}")
-            
-            return response
-            
-        except TimeoutError:
+            raw = self._run(self._send_command_async(command))
+            return CommandResponse.from_string(raw)
+
+        except asyncio.TimeoutError:
             raise TimeoutError(f"Command timed out after {command.timeout}s")
         except Exception as e:
-            raise CommandError(f"Command failed: {str(e)}")
-    
+            raise CommandError(f"Command failed: {e}")
+
     def is_connected(self) -> bool:
-        """Check if connected."""
         return self._connected
-    
-    def _simulate_response(self, command: Command) -> str:
-        """
-        Simulate ESP32 response for testing.
-        
-        In production, this method would not exist - responses
-        come from actual ESP32 hardware.
-        """
-        from linkbrain.core.command import CommandType
-        
-        if command.cmd_type == CommandType.GPIO_SET:
-            return f"OK:pin={command.params['pin']},value={command.params['value']}"
-        elif command.cmd_type == CommandType.GPIO_GET:
-            # Simulate reading pin value
-            return f"OK:pin={command.params['pin']},value=0"
-        elif command.cmd_type == CommandType.STATUS:
-            return "OK:status=ready,uptime=1234"
-        else:
-            return "OK"
+
+
+    async def _connect_async(self):
+        if not self._device:
+            self._device = await self._discover_device()
+
+        self._client = BleakClient(self._device)
+        await asyncio.wait_for(self._client.connect(), timeout=self.timeout)
+
+        if not self._client.is_connected:
+            raise ConnectionError("BLE connection failed")
+
+    async def _disconnect_async(self):
+        if self._client:
+            await self._client.disconnect()
+
+    async def _send_command_async(self, command: Command) -> str:
+        payload = command.to_protocol_string().encode("utf-8")
+
+        await self._client.write_gatt_char(WRITE_CHAR_UUID, payload)
+
+        if READ_CHAR_UUID:
+            data = await asyncio.wait_for(
+                self._client.read_gatt_char(READ_CHAR_UUID),
+                timeout=command.timeout
+            )
+            return data.decode("utf-8")
+
+        return "OK"
+
+    async def _discover_device(self):
+        logger.info("Scanning for ESP32 BLE device")
+
+        device = await BleakScanner.find_device_by_filter(
+            lambda d, ad: ad.service_uuids
+            and SERVICE_UUID.lower() in [s.lower() for s in ad.service_uuids]
+        )
+
+        if not device:
+            raise ConnectionError("ESP32 BLE device not found")
+
+        logger.info(f"Found device: {device.name or device.address}")
+        return device
+
+    def _run(self, coro):
+        return self._loop.run_until_complete(coro)

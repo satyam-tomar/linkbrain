@@ -1,0 +1,5 @@
+# ESP32 BLE Control
+bleak>=0.21.0
+
+# AI/LLM
+google-generativeai>=0.3.0

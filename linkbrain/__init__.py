@@ -22,6 +22,7 @@ Example Usage:
 __version__ = "0.1.0"
 __author__ = "LinkBrain Development Team"
 
+from linkbrain.core.controller import ESP32Controller
 
 from linkbrain.core.exceptions import (
     LinkBrainError,
