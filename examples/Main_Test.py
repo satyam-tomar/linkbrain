@@ -1,18 +1,3 @@
-"""
-LinkBrain Interactive Control - FIXED VERSION
-
-IMPORTANT CHANGES:
-1. Changed living_room light from pin 2 to pin 4
-   (Pin 2 is reserved for ESP32 heartbeat LED)
-2. Added better error handling
-3. Added status checking
-
-Pin Assignment:
-- Pin 2: Reserved for ESP32 heartbeat (DON'T USE)
-- Pin 4: Living room light (changed from pin 2)
-- Pin 5: Kitchen light (example)
-"""
-
 import asyncio
 import nest_asyncio
 nest_asyncio.apply()
