@@ -29,7 +29,7 @@ This is not a chatbot for IoT. It is a control plane for AI-driven physical syst
 
 ## What problem does LinkBrain solve?
 
-Most AI–hardware integrations today rely on ad-hoc glue code, fragile parsing, or hundreds of lines of low-level protocol logic. This makes systems hard to reason about, unsafe to scale, and difficult to audit.
+Most AI–hardware integrations today rely on ad-hoc glue code, fragile parsing, or hundreds of lines of low-level protocol logic. This makes systems difficult to reason about, unsafe to scale, and hardf to audit.
 
 LinkBrain introduces a strict separation of concerns:
 
@@ -137,7 +137,7 @@ The SDK ships with a small set of reference device abstractions and is designed 
 - **Custom**: Easy to extend
 
 ##  Supported LLMs
-LinkBrain currently integrates with the following providers through structured output interfaces:
+LinkBrain currently integrates with the following providers via structured output interfaces:
 - Anthropic Claude (Haiku, Sonnet, Opus)
 - Google Gemini (Pro, Pro Vision)
 
