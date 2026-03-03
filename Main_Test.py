@@ -26,12 +26,6 @@ async def main():
     except Exception as e:
         print(f"✗ Connection failed: {e}")
         return
-
-    # ----------------------------
-    # Device Definitions (FIXED PINS)
-    # ----------------------------
-    # IMPORTANT: Pin 2 is reserved for ESP32 heartbeat!
-    # Use pins 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, etc.
     
     living_room_light = Light("living_room", controller, pin=4)
     kitchen_light = Light("kitchen", controller, pin=5)  
@@ -69,7 +63,7 @@ async def main():
     # ----------------------------
     # LLM + Parser
     # ----------------------------
-    llm = GeminiProvider(api_key="YOUR_API_KEY")
+    llm = GeminiProvider(api_key="AIzaSyAuMYcyCIr9BRFgprcpM8kMqZC_OTEse1g")
     parser = ActionParser()
 
     # ----------------------------
