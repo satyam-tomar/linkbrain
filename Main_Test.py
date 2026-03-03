@@ -63,7 +63,7 @@ async def main():
     # ----------------------------
     # LLM + Parser
     # ----------------------------
-    llm = GeminiProvider(api_key="AIzaSyAuMYcyCIr9BRFgprcpM8kMqZC_OTEse1g")
+    llm = GeminiProvider(api_key="API_KEY")
     parser = ActionParser()
 
     # ----------------------------
